@@ -7,7 +7,7 @@ let locationFetched = false;
 const PARTICLES_PER_ZONE = 800; 
 
 function preload() {
-  // Force Start Timer: If fonts hang, start anyway to avoid black screen
+  // Signage Force-Start: Avoid black screen if fonts fail to load within 3s
   setTimeout(() => { if (!fontsLoaded) fontError("Timeout"); }, 3000);
 
   mainFont = loadFont('MP-B.ttf', () => { checkFonts(); }, fontError);  
@@ -20,15 +20,13 @@ function checkFonts() {
 }
 
 function fontError(err) {
-  console.error("Font Engine: Fallback active.");
-  mainFont = "Arial";
-  footerFont = "Georgia";
-  sidebarFont = "Arial";
+  console.error("Font Engine: Using Fallbacks.");
+  mainFont = "Arial"; footerFont = "Georgia"; sidebarFont = "Arial";
   fontsLoaded = true; 
 }
 
 function setup() {
-  createCanvas(1920, 1080); // 16:9 1080p resolution
+  createCanvas(1920, 1080); // 16:9 Architectural Frame
   fetchLocation();
 
   let zoneWidth = width / 4; 
@@ -44,16 +42,16 @@ function setup() {
   lastMinute = minute();
 }
 
-// --- RETRIEVED ORIGINAL FETCH TECHNIQUE ---
+// --- RESTORED LOCATION TECHNIQUE ---
 function fetchLocation() {
   if (locationFetched) return;
-  // This is the direct ipapi method from your previous working code
+  // Direct loadJSON with handling from original codebase
   loadJSON('https://ipapi.co/json/', (data) => {
     city = data.city.toUpperCase().substring(0, 12);
-    country = data.country_name.toUpperCase().substring(0, 10);
+    country = data.country_name.toUpperCase().substring(0, 12);
     locationFetched = true;
   }, (err) => {
-    console.log("Fetch failed, retrying in 30s...");
+    console.log("Retrying location fetch...");
     setTimeout(fetchLocation, 30000);
   });
 }
@@ -62,10 +60,7 @@ function draw() {
   background(28, 27, 28); 
 
   if (!fontsLoaded) {
-    fill(255);
-    noStroke();
-    textAlign(CENTER, CENTER);
-    textSize(24);
+    fill(255); noStroke(); textAlign(CENTER, CENTER); textSize(24);
     text("INITIALIZING ARCHITECTURAL ENGINE...", width / 2, height / 2);
     return;
   }
@@ -75,22 +70,14 @@ function draw() {
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
-  // Abbreviated Month/Day for clean pillar spacing
   let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
   let dateText = day() + " " + months[month() - 1] + " " + year() + " — " + days[new Date().getDay()];
   let locationText = (locationFetched ? city + ", " + country : "LOCATING...");
 
-  if (second() !== lastSecond) {
-    applyVibration(18); 
-    lastSecond = second();
-  }
-  
-  if (minute() !== lastMinute) {
-    shatterEffect();
-    lastMinute = minute();
-  }
+  if (second() !== lastSecond) { applyVibration(18); lastSecond = second(); }
+  if (minute() !== lastMinute) { shatterEffect(); lastMinute = minute(); }
 
   let zoneWidth = width / 4;
   for (let z = 0; z < 4; z++) {
@@ -102,9 +89,7 @@ function draw() {
       let p = zoneParticles[z][i];
       if (i < pts.length) { p.setTarget(pts[i].x, pts[i].y); } 
       else { p.setTarget(null, null); }
-      p.behaviors(xOffset, yOffset);
-      p.update();
-      p.show(xOffset, yOffset);
+      p.behaviors(xOffset, yOffset); p.update(); p.show(xOffset, yOffset);
     }
   }
 
@@ -119,13 +104,10 @@ function drawLayout(time, dateDayText, cityCountryText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // --- TOP-RIGHT LOCATION: PILLAR ALIGNED (RIGHT ALIGNED AT TOP) ---
+    // TOP-RIGHT LOCATION: PILLAR ALIGNMENT (Starts from same top location)
     push();
-    textFont(sidebarFont);
-    fill('#BBB6C3');
-    noStroke();
-    // Anchor point fixed at y=50. Text reads UPWARDS.
-    // textAlign(RIGHT) pins the end of the text to y=50
+    textFont(sidebarFont); fill('#BBB6C3'); noStroke();
+    // Anchor at y=50. textAlign(RIGHT) pins the end of the text to this spot
     translate(startX + zoneW - 70, 50); 
     rotate(-HALF_PI); 
     textAlign(RIGHT, CENTER);
@@ -133,18 +115,13 @@ function drawLayout(time, dateDayText, cityCountryText) {
     text(cityCountryText, 0, 0);
     pop();
 
-    // FOOTER: Time
-    textFont(footerFont);
-    fill(255); 
-    noStroke();
-    textAlign(LEFT, BOTTOM);
-    textSize(60); 
+    // FOOTER TIME
+    textFont(footerFont); fill(255); noStroke(); textAlign(LEFT, BOTTOM); textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // BOTTOM-RIGHT DATE: Standard upward reading
+    // BOTTOM-RIGHT DATE: Mirrored upward rotation
     push();
-    textFont(sidebarFont);
-    fill('#BBB6C3'); 
+    textFont(sidebarFont); fill('#BBB6C3'); 
     translate(startX + zoneW - 70, height - 25);
     rotate(-HALF_PI); 
     textAlign(LEFT, CENTER);
@@ -154,13 +131,13 @@ function drawLayout(time, dateDayText, cityCountryText) {
 
     // INTERNAL DIVIDERS
     if (i < 3) {
-      stroke(dividerCol);
-      strokeWeight(2.0); 
+      stroke(dividerCol); strokeWeight(2.0); 
       line((i + 1) * zoneW, 0, (i + 1) * zoneW, height);
     }
   }
 }
 
+// Particle class logic from your architectural code remains the same...
 function applyVibration(s) {
   for (let z = 0; z < 4; z++) {
     for (let p of zoneParticles[z]) { p.applyForce(p5.Vector.random2D().mult(random(s))); }
@@ -175,14 +152,9 @@ function shatterEffect() {
 
 function textToPoints(txt, x, y, size, step) {
   let pts = [];
-  let t = createGraphics(1000, 1000); 
-  t.pixelDensity(1);
-  t.textFont(mainFont); 
-  t.textSize(size * 0.5); 
-  t.textAlign(CENTER, CENTER);
-  t.fill(255);
-  t.text(txt, 500, 500);
-  t.loadPixels();
+  let t = createGraphics(1000, 1000); t.pixelDensity(1);
+  t.textFont(mainFont); t.textSize(size * 0.5); t.textAlign(CENTER, CENTER);
+  t.fill(255); t.text(txt, 500, 500); t.loadPixels();
   for (let i = 0; i < t.width; i += step) {
     for (let j = 0; j < t.height; j += step) {
       if (t.pixels[(i + j * t.width) * 4] > 127) {
@@ -190,37 +162,21 @@ function textToPoints(txt, x, y, size, step) {
       }
     }
   }
-  t.remove();
-  return pts;
+  t.remove(); return pts;
 }
 
 class Particle {
   constructor(minX, maxX, zoneIndex) {
-    this.minX = minX;
-    this.maxX = maxX;
-    this.zoneIndex = zoneIndex;
+    this.minX = minX; this.maxX = maxX; this.zoneIndex = zoneIndex;
     this.pos = createVector(random(this.minX, this.maxX), random(height));
     this.target = createVector(this.pos.x, this.pos.y);
-    this.vel = createVector();
-    this.acc = createVector();
-    this.rActiveBase = 8.4; 
-    this.rIdle = 5.6;       
-    this.maxspeed = 22;
-    this.maxforce = 2.0;
-    this.colorActive = color('#89C925'); 
-    this.colorIdle = color('#2A3320'); 
-    this.currentColor = color('#2A3320');
+    this.vel = createVector(); this.acc = createVector();
+    this.rActiveBase = 8.4; this.rIdle = 5.6; this.maxspeed = 22; this.maxforce = 2.0;
+    this.colorActive = color('#89C925'); this.colorIdle = color('#2A3320'); this.currentColor = color('#2A3320');
   }
-
-  setTarget(x, y) {
-    if (x) { this.target.set(x, y); this.isTargeted = true; } 
-    else { this.isTargeted = false; }
-  }
-
+  setTarget(x, y) { if (x) { this.target.set(x, y); this.isTargeted = true; } else { this.isTargeted = false; } }
   behaviors(cX, cY) {
-    if (this.isTargeted) {
-      this.applyForce(this.arrive(this.target));
-    } else {
+    if (this.isTargeted) { this.applyForce(this.arrive(this.target)); } else {
       let breathPhase = frameCount * 0.008 + (this.zoneIndex * PI/2);
       let breathingStrength = map(sin(breathPhase), -1, 1, 0.01, 0.08);
       let n = noise(this.pos.x * 0.003, this.pos.y * 0.003, frameCount * 0.005);
@@ -230,37 +186,26 @@ class Particle {
     }
     this.applyForce(p5.Vector.random2D().mult(0.2));
   }
-
   applyForce(f) { this.acc.add(f); }
-
   update() {
-    this.vel.add(this.acc).limit(this.maxspeed);
-    this.pos.add(this.vel);
-    this.acc.mult(0);
-    this.vel.mult(0.92);
+    this.vel.add(this.acc).limit(this.maxspeed); this.pos.add(this.vel); this.acc.mult(0); this.vel.mult(0.92);
     if (this.pos.x < this.minX || this.pos.x > this.maxX) { this.vel.x *= -1; }
     if (this.pos.y < 0 || this.pos.y > height) { this.vel.y *= -1; }
   }
-
   show(cX, cY) {
     let targetC = this.isTargeted ? this.colorActive : this.colorIdle;
-    this.currentColor = lerpColor(this.currentColor, targetC, 0.08);
-    stroke(this.currentColor);
-    
+    this.currentColor = lerpColor(this.currentColor, targetC, 0.08); stroke(this.currentColor);
     if (this.isTargeted) {
       let d = dist(this.pos.x, this.pos.y, cX, cY);
       let radialScale = map(d, 0, 400, 3.5, 0.8);
       radialScale = constrain(radialScale, 0.8, 3.5);
-      strokeWeight(this.rActiveBase * radialScale);
-      point(this.pos.x, this.pos.y);
+      strokeWeight(this.rActiveBase * radialScale); point(this.pos.x, this.pos.y);
     } else {
       let breathPhase = frameCount * 0.01 + (this.zoneIndex * PI/2) + (this.pos.x * 0.005);
       let currentR = map(sin(breathPhase), -1, 1, this.rIdle * 0.8, this.rIdle * 2.5);
-      strokeWeight(currentR); 
-      point(this.pos.x, this.pos.y); 
+      strokeWeight(currentR); point(this.pos.x, this.pos.y); 
     }
   }
-
   arrive(t) {
     let d = p5.Vector.sub(t, this.pos);
     let s = d.mag() < 120 ? map(d.mag(), 0, 120, 0, this.maxspeed) : this.maxspeed;
