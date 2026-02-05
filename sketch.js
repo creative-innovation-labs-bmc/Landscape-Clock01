@@ -108,7 +108,7 @@ function drawLayout(time, dateDayText, cityCountryText) {
     push();
     textFont(sidebarFont); fill('#BBB6C3'); noStroke();
     // Anchor at y=50. textAlign(RIGHT) pins the end of the text to this spot
-    translate(startX + zoneW - 70, 50); 
+    translate(startX + zoneW - 70, 30); 
     rotate(-HALF_PI); 
     textAlign(RIGHT, CENTER);
     textSize(20);
