@@ -35,9 +35,8 @@ function fetchLocation() {
 
 function handleLocation(data) {
   if (data && data.city) {
-    // Shorten City and Country names if they are too long (e.g., max 10 chars)
-    city = data.city.toUpperCase().substring(0, 10);
-    country = data.country_name.toUpperCase().substring(0, 10);
+    city = data.city.toUpperCase().substring(0, 12);
+    country = data.country_name.toUpperCase().substring(0, 12);
     locationFetched = true;
   }
 }
@@ -50,14 +49,16 @@ function draw() {
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
-  // Shortened Month and Day arrays
   let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
   let dateStr = day() + " " + months[month() - 1] + " " + year();
   let dayStr = days[new Date().getDay()];
   
-  let sidebarText = (locationFetched ? city + ", " + country + " — " : "") + dateStr + " — " + dayStr;
+  // New Sidebar: Date and Day only
+  let dateText = dateStr + " — " + dayStr;
+  // New Top Text: Location only
+  let locationText = (locationFetched ? city + ", " + country : "");
 
   if (second() !== lastSecond) {
     applyVibration(18); 
@@ -85,10 +86,10 @@ function draw() {
     }
   }
 
-  drawLayout(h + ":" + m + ":" + s, sidebarText);
+  drawLayout(h + ":" + m + ":" + s, dateText, locationText);
 }
 
-function drawLayout(time, sidebarText) {
+function drawLayout(time, sidebarText, topText) {
   let zoneW = width / 4;
   let dividerLerp = map(sin(frameCount * 0.008), -1, 1, 0, 0.3);
   let dividerCol = lerpColor(color('#FFFFFF'), color('#4e5859'), dividerLerp);
@@ -96,6 +97,15 @@ function drawLayout(time, sidebarText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
+    // TOP LOCATION DISPLAY (The red line area)
+    textFont(sidebarFont);
+    fill('#BBB6C3');
+    noStroke();
+    textAlign(LEFT, TOP);
+    textSize(20);
+    text(topText, startX + 60, 40);
+
+    // FOOTER: Time display
     textFont(footerFont);
     fill(255); 
     noStroke();
@@ -103,6 +113,7 @@ function drawLayout(time, sidebarText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
+    // SIDEBAR: Date and Day only
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
