@@ -1,23 +1,31 @@
 let zoneParticles = [[], [], [], []]; 
 let lastSecond, lastMinute;
 let mainFont, footerFont, sidebarFont; 
-let city = "", country = ""; // Empty strings prevent showing "Unavailable"
+let city = "", country = ""; 
+let fontsLoaded = false;
 let locationFetched = false;
-const PARTICLES_PER_ZONE = 2000; 
+const PARTICLES_PER_ZONE = 1000; 
 
 function preload() {
-  mainFont = loadFont('MP-B.ttf'); 
-  footerFont = loadFont('MS-Bk.otf');
-  sidebarFont = loadFont('MP-M.ttf'); 
+  // Callback handlers prevent the "Unsupported OpenType signature" from crashing the app
+  mainFont = loadFont('MP-B.ttf', () => { fontsLoaded = true; }, fontError);  
+  footerFont = loadFont('MS-Bk.otf', null, fontError);
+  sidebarFont = loadFont('MP-M.ttf', null, fontError); 
+}
+
+function fontError(err) {
+  console.error("Font Load Error: Fallback active.", err);
+  mainFont = "Arial";
+  footerFont = "Georgia";
+  sidebarFont = "Arial";
+  fontsLoaded = true; 
 }
 
 function setup() {
-  createCanvas(3840, 804); 
-  
-  // Start the resilient fetch process
+  createCanvas(1920, 1080); 
   fetchLocation();
 
-  let zoneWidth = width / 4;
+  let zoneWidth = width / 4; 
   for (let z = 0; z < 4; z++) {
     let minX = z * zoneWidth;
     let maxX = (z + 1) * zoneWidth;
@@ -30,51 +38,47 @@ function setup() {
   lastMinute = minute();
 }
 
-// --- RESILIENT FETCH LOGIC ---
 function fetchLocation() {
-  if (locationFetched) return; // Stop retrying once we have the data
-  
-  // Using ipapi.co with a timeout/error handling
-  loadJSON('https://ipapi.co/json/', handleLocation, handleLocationError);
+  if (locationFetched) return;
+  // loadJSON with resilient 30s retry loop
+  loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
+    setTimeout(fetchLocation, 30000);
+  });
 }
 
 function handleLocation(data) {
-  if (data && data.city && data.country_name) {
+  if (data && data.city) {
     city = data.city.toUpperCase();
     country = data.country_name.toUpperCase();
     locationFetched = true;
-    console.log("Location successfully synchronized: " + city);
   }
 }
 
-function handleLocationError(err) {
-  console.log("Location fetch pending... retrying in 30 seconds.");
-  // Wait 30 seconds and try again - ideal for digital signage reboots
-  setTimeout(fetchLocation, 30000); 
-}
-
 function draw() {
-  background(28, 27, 28); // #1C1B1C
+  background(28, 27, 28); 
+
+  // --- ARCHITECTURAL LOADING STATE ---
+  if (!fontsLoaded) {
+    fill(255);
+    noStroke();
+    textFont("Georgia"); // Temporary fallback
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("INITIALIZING ARCHITECTURAL ENGINE...", width / 2, height / 2);
+    return;
+  }
 
   let h = nf(hour(), 2);
   let m = nf(minute(), 2);
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
-  let monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-  let dayNames = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-  let dateStr = day() + " " + monthNames[month() - 1] + " " + year();
-  let dayStr = dayNames[new Date().getDay()];
-  
-  // Conditional sidebar: Only adds location if fetched successfully
-  let fullSidebarStr = "";
-  if (locationFetched) {
-    fullSidebarStr += city + ", " + country + " — ";
-  }
-  fullSidebarStr += dateStr + " — " + dayStr;
+  let dateStr = day() + " " + ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"][month() - 1] + " " + year();
+  let dayStr = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"][new Date().getDay()];
+  let sidebarText = (locationFetched ? city + ", " + country + " — " : "") + dateStr + " — " + dayStr;
 
   if (second() !== lastSecond) {
-    applyVibration(15); 
+    applyVibration(18); 
     lastSecond = second();
   }
   
@@ -83,33 +87,29 @@ function draw() {
     lastMinute = minute();
   }
 
-  // --- PARTICLE LAYER ---
   let zoneWidth = width / 4;
   for (let z = 0; z < 4; z++) {
     let xOffset = (z * zoneWidth) + (zoneWidth / 2);
     let yOffset = height / 2 - 140; 
-    let pts = textToPoints(digits[z], xOffset, yOffset, 750, 9); 
+    let pts = textToPoints(digits[z], xOffset, yOffset, 850, 9); 
 
     for (let i = 0; i < zoneParticles[z].length; i++) {
       let p = zoneParticles[z][i];
       if (i < pts.length) { p.setTarget(pts[i].x, pts[i].y); } 
       else { p.setTarget(null, null); }
-      p.behaviors();
+      p.behaviors(xOffset, yOffset);
       p.update();
       p.show(xOffset, yOffset);
     }
   }
 
-  // --- TOP OVERLAY LAYER ---
-  drawLayout(h + ":" + m + ":" + s, fullSidebarStr);
+  drawLayout(h + ":" + m + ":" + s, sidebarText);
 }
 
 function drawLayout(time, sidebarText) {
   let zoneW = width / 4;
   let dividerLerp = map(sin(frameCount * 0.008), -1, 1, 0, 0.3);
-  let white = color('#FFFFFF');
-  let grey = color('#4e5859');
-  let dividerCol = lerpColor(white, grey, dividerLerp);
+  let dividerCol = lerpColor(color('#FFFFFF'), color('#4e5859'), dividerLerp);
 
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
@@ -118,22 +118,25 @@ function drawLayout(time, sidebarText) {
     fill(255); 
     noStroke();
     textAlign(LEFT, BOTTOM);
-    textSize(50);
-    text(time, startX + 50, height - 50);
+    textSize(60); 
+    text(time, startX + 60, height - 20);
 
     push();
     textFont(sidebarFont);
-    fill('#8E9C9C'); 
-    translate(startX + zoneW - 60, height - 50);
+    fill('#BBB6C3'); 
+    translate(startX + zoneW - 70, height - 25);
     rotate(-HALF_PI); 
     textAlign(LEFT, CENTER);
-    textSize(24); 
+    textSize(20); 
     text(sidebarText, 0, 0);
     pop();
 
-    stroke(dividerCol);
-    strokeWeight(2.0); // Thick architectural dividers
-    line((i + 1) * zoneW, 0, (i + 1) * zoneW, height);
+    // INTERNAL DIVIDERS ONLY
+    if (i < 3) {
+      stroke(dividerCol);
+      strokeWeight(2.0); 
+      line((i + 1) * zoneW, 0, (i + 1) * zoneW, height);
+    }
   }
 }
 
@@ -145,24 +148,24 @@ function applyVibration(s) {
 
 function shatterEffect() {
   for (let z = 0; z < 4; z++) {
-    for (let p of zoneParticles[z]) { p.applyForce(p5.Vector.random2D().mult(random(250, 450))); }
+    for (let p of zoneParticles[z]) { p.applyForce(p5.Vector.random2D().mult(random(300, 600))); }
   }
 }
 
 function textToPoints(txt, x, y, size, step) {
   let pts = [];
-  let t = createGraphics(600, 600); 
+  let t = createGraphics(1000, 1000); 
   t.pixelDensity(1);
   t.textFont(mainFont); 
   t.textSize(size * 0.5); 
   t.textAlign(CENTER, CENTER);
   t.fill(255);
-  t.text(txt, 300, 300);
+  t.text(txt, 500, 500);
   t.loadPixels();
   for (let i = 0; i < t.width; i += step) {
     for (let j = 0; j < t.height; j += step) {
       if (t.pixels[(i + j * t.width) * 4] > 127) {
-        pts.push({ x: x + (i - 300) * 2, y: y + (j - 300) * 2 });
+        pts.push({ x: x + (i - 500) * 2, y: y + (j - 500) * 2 });
       }
     }
   }
@@ -193,7 +196,7 @@ class Particle {
     else { this.isTargeted = false; }
   }
 
-  behaviors() {
+  behaviors(cX, cY) {
     if (this.isTargeted) {
       this.applyForce(this.arrive(this.target));
     } else {
@@ -201,7 +204,7 @@ class Particle {
       let breathingStrength = map(sin(breathPhase), -1, 1, 0.01, 0.08);
       let n = noise(this.pos.x * 0.003, this.pos.y * 0.003, frameCount * 0.005);
       this.applyForce(p5.Vector.fromAngle(TWO_PI * n).mult(0.1));
-      let zoneCenter = createVector((this.minX + this.maxX) / 2, height / 2 - 140);
+      let zoneCenter = createVector(cX, cY);
       this.applyForce(p5.Vector.sub(zoneCenter, this.pos).setMag(breathingStrength));
     }
     this.applyForce(p5.Vector.random2D().mult(0.2));
@@ -224,9 +227,8 @@ class Particle {
     stroke(this.currentColor);
     
     if (this.isTargeted) {
-      // MASSIVE RADIAL SCALING (3.5 Center to 0.8 Edge)
       let d = dist(this.pos.x, this.pos.y, cX, cY);
-      let radialScale = map(d, 0, 300, 3.5, 0.8);
+      let radialScale = map(d, 0, 400, 3.5, 0.8);
       radialScale = constrain(radialScale, 0.8, 3.5);
       strokeWeight(this.rActiveBase * radialScale);
       point(this.pos.x, this.pos.y);
