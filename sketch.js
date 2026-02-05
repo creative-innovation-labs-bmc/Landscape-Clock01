@@ -2,13 +2,29 @@ let zoneParticles = [[], [], [], []];
 let lastSecond, lastMinute;
 let mainFont, footerFont, sidebarFont; 
 let city = "", country = ""; 
+let fontsLoaded = false;
 let locationFetched = false;
 const PARTICLES_PER_ZONE = 800; 
 
 function preload() {
-  mainFont = loadFont('MP-B.ttf');  
-  footerFont = loadFont('MS-Bk.otf');
-  sidebarFont = loadFont('MP-M.ttf'); 
+  // Force Start Timer: Ensures the clock runs even if fonts hang
+  setTimeout(() => { if (!fontsLoaded) fontError("Timeout"); }, 3000);
+
+  mainFont = loadFont('MP-B.ttf', () => { checkFonts(); }, fontError);  
+  footerFont = loadFont('MS-Bk.otf', () => { checkFonts(); }, fontError);
+  sidebarFont = loadFont('MP-M.ttf', () => { checkFonts(); }, fontError); 
+}
+
+function checkFonts() {
+  if (mainFont && footerFont && sidebarFont) { fontsLoaded = true; }
+}
+
+function fontError(err) {
+  console.error("Font Engine: Using System Fallbacks.");
+  mainFont = "Arial";
+  footerFont = "Georgia";
+  sidebarFont = "Arial";
+  fontsLoaded = true; 
 }
 
 function setup() {
@@ -30,14 +46,17 @@ function setup() {
 
 function fetchLocation() {
   if (locationFetched) return;
-  loadJSON('https://ipapi.co/json/', handleLocation, (err) => setTimeout(fetchLocation, 30000));
+  loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
+    console.log("Location fetch failed, retrying in 30s...");
+    setTimeout(fetchLocation, 30000);
+  });
 }
 
 function handleLocation(data) {
   if (data && data.city) {
-    // Shorten City and Country names if they are too long (e.g., max 10 chars)
-    city = data.city.toUpperCase().substring(0, 10);
-    country = data.country_name.toUpperCase().substring(0, 10);
+    // CITY & COUNTRY CODE TECHNIQUE
+    city = data.city.toUpperCase().substring(0, 12);
+    country = data.country_code ? data.country_code.toUpperCase() : data.country_name.toUpperCase().substring(0, 3);
     locationFetched = true;
   }
 }
@@ -45,19 +64,25 @@ function handleLocation(data) {
 function draw() {
   background(28, 27, 28); 
 
+  if (!fontsLoaded) {
+    fill(255);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("INITIALIZING ARCHITECTURAL ENGINE...", width / 2, height / 2);
+    return;
+  }
+
   let h = nf(hour(), 2);
   let m = nf(minute(), 2);
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
-  // Shortened Month and Day arrays
   let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
-  let dateStr = day() + " " + months[month() - 1] + " " + year();
-  let dayStr = days[new Date().getDay()];
-  
-  let sidebarText = (locationFetched ? city + ", " + country + " — " : "") + dateStr + " — " + dayStr;
+  let dateText = day() + " " + months[month() - 1] + " " + year() + " — " + days[new Date().getDay()];
+  let locationText = (locationFetched ? city + ", " + country : "LOCATING...");
 
   if (second() !== lastSecond) {
     applyVibration(18); 
@@ -85,10 +110,10 @@ function draw() {
     }
   }
 
-  drawLayout(h + ":" + m + ":" + s, sidebarText);
+  drawLayout(h + ":" + m + ":" + s, dateText, locationText);
 }
 
-function drawLayout(time, sidebarText) {
+function drawLayout(time, dateDayText, cityCountryText) {
   let zoneW = width / 4;
   let dividerLerp = map(sin(frameCount * 0.008), -1, 1, 0, 0.3);
   let dividerCol = lerpColor(color('#FFFFFF'), color('#4e5859'), dividerLerp);
@@ -96,6 +121,21 @@ function drawLayout(time, sidebarText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
+    // --- TOP-RIGHT LOCATION: TOP-PINNED & RIGHT-ALIGNED ---
+    push();
+    textFont(sidebarFont);
+    fill('#BBB6C3');
+    noStroke();
+    // Anchor point fixed at y=60. Text reads UPWARDS.
+    // textAlign(RIGHT) ensures the visual end of the string is fixed at y=60
+    translate(startX + zoneW - 70, 60); 
+    rotate(-HALF_PI); 
+    textAlign(RIGHT, CENTER);
+    textSize(20);
+    text(cityCountryText, 0, 0);
+    pop();
+
+    // FOOTER: Time
     textFont(footerFont);
     fill(255); 
     noStroke();
@@ -103,6 +143,7 @@ function drawLayout(time, sidebarText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
+    // BOTTOM-RIGHT DATE: Standard upward reading
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
@@ -110,9 +151,10 @@ function drawLayout(time, sidebarText) {
     rotate(-HALF_PI); 
     textAlign(LEFT, CENTER);
     textSize(20); 
-    text(sidebarText, 0, 0);
+    text(dateDayText, 0, 0);
     pop();
 
+    // INTERNAL DIVIDERS
     if (i < 3) {
       stroke(dividerCol);
       strokeWeight(2.0); 
