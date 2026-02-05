@@ -7,8 +7,7 @@ let locationFetched = false;
 const PARTICLES_PER_ZONE = 800; 
 
 function preload() {
-  // --- BUG FIX: FORCE START TIMER ---
-  // If fonts hang for more than 3 seconds, start the clock anyway
+  // Force Start Timer: Ensures the clock runs even if fonts hang
   setTimeout(() => { if (!fontsLoaded) fontError("Timeout"); }, 3000);
 
   mainFont = loadFont('MP-B.ttf', () => { checkFonts(); }, fontError);  
@@ -17,14 +16,10 @@ function preload() {
 }
 
 function checkFonts() {
-  // Simple check to see if all fonts are ready
-  if (mainFont && footerFont && sidebarFont) {
-    fontsLoaded = true;
-  }
+  if (mainFont && footerFont && sidebarFont) { fontsLoaded = true; }
 }
 
 function fontError(err) {
-  console.error("Font Engine: Using System Fallbacks.");
   mainFont = "Arial";
   footerFont = "Georgia";
   sidebarFont = "Arial";
@@ -50,9 +45,7 @@ function setup() {
 
 function fetchLocation() {
   if (locationFetched) return;
-  // loadJSON with a fail-safe to avoid blocking the draw loop
   loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
-    console.log("Location fetch failed, retrying in 30s...");
     setTimeout(fetchLocation, 30000);
   });
 }
@@ -85,10 +78,7 @@ function draw() {
   let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
-  let dateStr = day() + " " + months[month() - 1] + " " + year();
-  let dayStr = days[new Date().getDay()];
-  
-  let dateText = dateStr + " — " + dayStr;
+  let dateText = day() + " " + months[month() - 1] + " " + year() + " — " + days[new Date().getDay()];
   let locationText = (locationFetched ? city + ", " + country : "");
 
   if (second() !== lastSecond) {
@@ -128,20 +118,21 @@ function drawLayout(time, dateDayText, cityCountryText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // TOP-RIGHT LOCATION: Reading UPWARDS
+    // --- TOP-RIGHT LOCATION: RIGHT-ALIGNED STARTING FROM TOP ---
     push();
     textFont(sidebarFont);
     fill('#BBB6C3');
     noStroke();
-    // Anchor at y=250 to read up towards the top-right corner
-    translate(startX + zoneW - 70, 250); 
+    // Anchor pinned at y=50. rotate(-HALF_PI) makes the text read upwards.
+    // textAlign(RIGHT) ensures the visual TOP of the text is fixed at y=50
+    translate(startX + zoneW - 70, 50); 
     rotate(-HALF_PI); 
-    textAlign(LEFT, CENTER);
+    textAlign(RIGHT, CENTER);
     textSize(20);
     text(cityCountryText, 0, 0);
     pop();
 
-    // FOOTER: Time display
+    // FOOTER: Time
     textFont(footerFont);
     fill(255); 
     noStroke();
@@ -149,7 +140,7 @@ function drawLayout(time, dateDayText, cityCountryText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // BOTTOM-RIGHT DATE: Reading UPWARDS
+    // BOTTOM-RIGHT DATE: Standard upward reading
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
@@ -160,7 +151,7 @@ function drawLayout(time, dateDayText, cityCountryText) {
     text(dateDayText, 0, 0);
     pop();
 
-    // INTERNAL DIVIDERS ONLY (Removed right-most border)
+    // INTERNAL DIVIDERS
     if (i < 3) {
       stroke(dividerCol);
       strokeWeight(2.0); 
