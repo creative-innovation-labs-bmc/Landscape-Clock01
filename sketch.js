@@ -7,7 +7,7 @@ let locationFetched = false;
 const PARTICLES_PER_ZONE = 800; 
 
 function preload() {
-  // Force Start Timer: Ensures the clock runs even if fonts hang
+  // Force Start Timer: If fonts hang, start anyway to avoid black screen
   setTimeout(() => { if (!fontsLoaded) fontError("Timeout"); }, 3000);
 
   mainFont = loadFont('MP-B.ttf', () => { checkFonts(); }, fontError);  
@@ -20,7 +20,7 @@ function checkFonts() {
 }
 
 function fontError(err) {
-  console.error("Font Engine: Using System Fallbacks.");
+  console.error("Font Engine: Fallback active.");
   mainFont = "Arial";
   footerFont = "Georgia";
   sidebarFont = "Arial";
@@ -28,7 +28,7 @@ function fontError(err) {
 }
 
 function setup() {
-  createCanvas(1920, 1080); 
+  createCanvas(1920, 1080); // 16:9 1080p resolution
   fetchLocation();
 
   let zoneWidth = width / 4; 
@@ -44,15 +44,16 @@ function setup() {
   lastMinute = minute();
 }
 
-// --- RESTORED ORIGINAL FETCH METHOD ---
+// --- RETRIEVED ORIGINAL FETCH TECHNIQUE ---
 function fetchLocation() {
   if (locationFetched) return;
+  // This is the direct ipapi method from your previous working code
   loadJSON('https://ipapi.co/json/', (data) => {
     city = data.city.toUpperCase().substring(0, 12);
     country = data.country_name.toUpperCase().substring(0, 10);
     locationFetched = true;
   }, (err) => {
-    console.log("Location fetch failed, retrying in 30s...");
+    console.log("Fetch failed, retrying in 30s...");
     setTimeout(fetchLocation, 30000);
   });
 }
@@ -74,6 +75,7 @@ function draw() {
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
+  // Abbreviated Month/Day for clean pillar spacing
   let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
@@ -117,13 +119,13 @@ function drawLayout(time, dateDayText, cityCountryText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // --- TOP-RIGHT LOCATION: PILLAR ALIGNMENT ---
+    // --- TOP-RIGHT LOCATION: PILLAR ALIGNED (RIGHT ALIGNED AT TOP) ---
     push();
     textFont(sidebarFont);
     fill('#BBB6C3');
     noStroke();
-    // Anchor point fixed at y=50. rotate(-HALF_PI) makes the text read UPWARDS.
-    // textAlign(RIGHT) ensures the visual end of the text is fixed at y=50
+    // Anchor point fixed at y=50. Text reads UPWARDS.
+    // textAlign(RIGHT) pins the end of the text to y=50
     translate(startX + zoneW - 70, 50); 
     rotate(-HALF_PI); 
     textAlign(RIGHT, CENTER);
@@ -139,7 +141,7 @@ function drawLayout(time, dateDayText, cityCountryText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // BOTTOM-RIGHT DATE: Upward reading
+    // BOTTOM-RIGHT DATE: Standard upward reading
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
