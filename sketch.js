@@ -44,21 +44,17 @@ function setup() {
   lastMinute = minute();
 }
 
+// --- RESTORED ORIGINAL FETCH METHOD ---
 function fetchLocation() {
   if (locationFetched) return;
-  loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
+  loadJSON('https://ipapi.co/json/', (data) => {
+    city = data.city.toUpperCase().substring(0, 12);
+    country = data.country_name.toUpperCase().substring(0, 10);
+    locationFetched = true;
+  }, (err) => {
     console.log("Location fetch failed, retrying in 30s...");
     setTimeout(fetchLocation, 30000);
   });
-}
-
-function handleLocation(data) {
-  if (data && data.city) {
-    // CITY & COUNTRY CODE TECHNIQUE
-    city = data.city.toUpperCase().substring(0, 12);
-    country = data.country_code ? data.country_code.toUpperCase() : data.country_name.toUpperCase().substring(0, 3);
-    locationFetched = true;
-  }
 }
 
 function draw() {
@@ -121,14 +117,14 @@ function drawLayout(time, dateDayText, cityCountryText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // --- TOP-RIGHT LOCATION: TOP-PINNED & RIGHT-ALIGNED ---
+    // --- TOP-RIGHT LOCATION: PILLAR ALIGNMENT ---
     push();
     textFont(sidebarFont);
     fill('#BBB6C3');
     noStroke();
-    // Anchor point fixed at y=60. Text reads UPWARDS.
-    // textAlign(RIGHT) ensures the visual end of the string is fixed at y=60
-    translate(startX + zoneW - 70, 60); 
+    // Anchor point fixed at y=50. rotate(-HALF_PI) makes the text read UPWARDS.
+    // textAlign(RIGHT) ensures the visual end of the text is fixed at y=50
+    translate(startX + zoneW - 70, 50); 
     rotate(-HALF_PI); 
     textAlign(RIGHT, CENTER);
     textSize(20);
@@ -143,7 +139,7 @@ function drawLayout(time, dateDayText, cityCountryText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // BOTTOM-RIGHT DATE: Standard upward reading
+    // BOTTOM-RIGHT DATE: Upward reading
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
