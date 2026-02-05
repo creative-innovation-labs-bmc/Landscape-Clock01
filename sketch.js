@@ -7,18 +7,18 @@ let locationFetched = false;
 const PARTICLES_PER_ZONE = 1000; 
 
 function preload() {
-  // Callback handlers prevent the "Unsupported OpenType signature" from crashing the app
+  // Using simplified filenames for signage compatibility
   mainFont = loadFont('MP-B.ttf', () => { fontsLoaded = true; }, fontError);  
   footerFont = loadFont('MS-Bk.otf', null, fontError);
   sidebarFont = loadFont('MP-M.ttf', null, fontError); 
 }
 
 function fontError(err) {
-  console.error("Font Load Error: Fallback active.", err);
+  console.error("Font failed. Fallback active.");
   mainFont = "Arial";
   footerFont = "Georgia";
   sidebarFont = "Arial";
-  fontsLoaded = true; 
+  fontsLoaded = true; // Force start if fonts fail
 }
 
 function setup() {
@@ -40,9 +40,8 @@ function setup() {
 
 function fetchLocation() {
   if (locationFetched) return;
-  // loadJSON with resilient 30s retry loop
   loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
-    setTimeout(fetchLocation, 30000);
+    setTimeout(fetchLocation, 30000); // Retry every 30s if offline
   });
 }
 
@@ -57,11 +56,9 @@ function handleLocation(data) {
 function draw() {
   background(28, 27, 28); 
 
-  // --- ARCHITECTURAL LOADING STATE ---
   if (!fontsLoaded) {
     fill(255);
     noStroke();
-    textFont("Georgia"); // Temporary fallback
     textAlign(CENTER, CENTER);
     textSize(24);
     text("INITIALIZING ARCHITECTURAL ENGINE...", width / 2, height / 2);
@@ -131,7 +128,7 @@ function drawLayout(time, sidebarText) {
     text(sidebarText, 0, 0);
     pop();
 
-    // INTERNAL DIVIDERS ONLY
+    // REMOVED THE LAST DIVIDER
     if (i < 3) {
       stroke(dividerCol);
       strokeWeight(2.0); 
@@ -148,101 +145,3 @@ function applyVibration(s) {
 
 function shatterEffect() {
   for (let z = 0; z < 4; z++) {
-    for (let p of zoneParticles[z]) { p.applyForce(p5.Vector.random2D().mult(random(300, 600))); }
-  }
-}
-
-function textToPoints(txt, x, y, size, step) {
-  let pts = [];
-  let t = createGraphics(1000, 1000); 
-  t.pixelDensity(1);
-  t.textFont(mainFont); 
-  t.textSize(size * 0.5); 
-  t.textAlign(CENTER, CENTER);
-  t.fill(255);
-  t.text(txt, 500, 500);
-  t.loadPixels();
-  for (let i = 0; i < t.width; i += step) {
-    for (let j = 0; j < t.height; j += step) {
-      if (t.pixels[(i + j * t.width) * 4] > 127) {
-        pts.push({ x: x + (i - 500) * 2, y: y + (j - 500) * 2 });
-      }
-    }
-  }
-  t.remove();
-  return pts;
-}
-
-class Particle {
-  constructor(minX, maxX, zoneIndex) {
-    this.minX = minX;
-    this.maxX = maxX;
-    this.zoneIndex = zoneIndex;
-    this.pos = createVector(random(this.minX, this.maxX), random(height));
-    this.target = createVector(this.pos.x, this.pos.y);
-    this.vel = createVector();
-    this.acc = createVector();
-    this.rActiveBase = 8.4; 
-    this.rIdle = 5.6;       
-    this.maxspeed = 22;
-    this.maxforce = 2.0;
-    this.colorActive = color('#89C925'); 
-    this.colorIdle = color('#2A3320'); 
-    this.currentColor = color('#2A3320');
-  }
-
-  setTarget(x, y) {
-    if (x) { this.target.set(x, y); this.isTargeted = true; } 
-    else { this.isTargeted = false; }
-  }
-
-  behaviors(cX, cY) {
-    if (this.isTargeted) {
-      this.applyForce(this.arrive(this.target));
-    } else {
-      let breathPhase = frameCount * 0.008 + (this.zoneIndex * PI/2);
-      let breathingStrength = map(sin(breathPhase), -1, 1, 0.01, 0.08);
-      let n = noise(this.pos.x * 0.003, this.pos.y * 0.003, frameCount * 0.005);
-      this.applyForce(p5.Vector.fromAngle(TWO_PI * n).mult(0.1));
-      let zoneCenter = createVector(cX, cY);
-      this.applyForce(p5.Vector.sub(zoneCenter, this.pos).setMag(breathingStrength));
-    }
-    this.applyForce(p5.Vector.random2D().mult(0.2));
-  }
-
-  applyForce(f) { this.acc.add(f); }
-
-  update() {
-    this.vel.add(this.acc).limit(this.maxspeed);
-    this.pos.add(this.vel);
-    this.acc.mult(0);
-    this.vel.mult(0.92);
-    if (this.pos.x < this.minX || this.pos.x > this.maxX) { this.vel.x *= -1; }
-    if (this.pos.y < 0 || this.pos.y > height) { this.vel.y *= -1; }
-  }
-
-  show(cX, cY) {
-    let targetC = this.isTargeted ? this.colorActive : this.colorIdle;
-    this.currentColor = lerpColor(this.currentColor, targetC, 0.08);
-    stroke(this.currentColor);
-    
-    if (this.isTargeted) {
-      let d = dist(this.pos.x, this.pos.y, cX, cY);
-      let radialScale = map(d, 0, 400, 3.5, 0.8);
-      radialScale = constrain(radialScale, 0.8, 3.5);
-      strokeWeight(this.rActiveBase * radialScale);
-      point(this.pos.x, this.pos.y);
-    } else {
-      let breathPhase = frameCount * 0.01 + (this.zoneIndex * PI/2) + (this.pos.x * 0.005);
-      let currentR = map(sin(breathPhase), -1, 1, this.rIdle * 0.8, this.rIdle * 2.5);
-      strokeWeight(currentR); 
-      point(this.pos.x, this.pos.y); 
-    }
-  }
-
-  arrive(t) {
-    let d = p5.Vector.sub(t, this.pos);
-    let s = d.mag() < 120 ? map(d.mag(), 0, 120, 0, this.maxspeed) : this.maxspeed;
-    return p5.Vector.sub(d.setMag(s), this.vel).limit(this.maxforce);
-  }
-}
