@@ -2,13 +2,33 @@ let zoneParticles = [[], [], [], []];
 let lastSecond, lastMinute;
 let mainFont, footerFont, sidebarFont; 
 let city = "", country = ""; 
+let fontsLoaded = false;
 let locationFetched = false;
 const PARTICLES_PER_ZONE = 800; 
 
 function preload() {
-  mainFont = loadFont('MP-B.ttf');  
-  footerFont = loadFont('MS-Bk.otf');
-  sidebarFont = loadFont('MP-M.ttf'); 
+  // --- BUG FIX: FORCE START TIMER ---
+  // If fonts hang for more than 3 seconds, start the clock anyway
+  setTimeout(() => { if (!fontsLoaded) fontError("Timeout"); }, 3000);
+
+  mainFont = loadFont('MP-B.ttf', () => { checkFonts(); }, fontError);  
+  footerFont = loadFont('MS-Bk.otf', () => { checkFonts(); }, fontError);
+  sidebarFont = loadFont('MP-M.ttf', () => { checkFonts(); }, fontError); 
+}
+
+function checkFonts() {
+  // Simple check to see if all fonts are ready
+  if (mainFont && footerFont && sidebarFont) {
+    fontsLoaded = true;
+  }
+}
+
+function fontError(err) {
+  console.error("Font Engine: Using System Fallbacks.");
+  mainFont = "Arial";
+  footerFont = "Georgia";
+  sidebarFont = "Arial";
+  fontsLoaded = true; 
 }
 
 function setup() {
@@ -30,19 +50,32 @@ function setup() {
 
 function fetchLocation() {
   if (locationFetched) return;
-  loadJSON('https://ipapi.co/json/', handleLocation, (err) => setTimeout(fetchLocation, 30000));
+  // loadJSON with a fail-safe to avoid blocking the draw loop
+  loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
+    console.log("Location fetch failed, retrying in 30s...");
+    setTimeout(fetchLocation, 30000);
+  });
 }
 
 function handleLocation(data) {
   if (data && data.city) {
-    city = data.city.toUpperCase().substring(0, 12);
-    country = data.country_name.toUpperCase().substring(0, 12);
+    city = data.city.toUpperCase().substring(0, 10);
+    country = data.country_name.toUpperCase().substring(0, 10);
     locationFetched = true;
   }
 }
 
 function draw() {
   background(28, 27, 28); 
+
+  if (!fontsLoaded) {
+    fill(255);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("INITIALIZING ARCHITECTURAL ENGINE...", width / 2, height / 2);
+    return;
+  }
 
   let h = nf(hour(), 2);
   let m = nf(minute(), 2);
@@ -55,7 +88,7 @@ function draw() {
   let dateStr = day() + " " + months[month() - 1] + " " + year();
   let dayStr = days[new Date().getDay()];
   
-  let sidebarText = dateStr + " — " + dayStr;
+  let dateText = dateStr + " — " + dayStr;
   let locationText = (locationFetched ? city + ", " + country : "");
 
   if (second() !== lastSecond) {
@@ -84,10 +117,10 @@ function draw() {
     }
   }
 
-  drawLayout(h + ":" + m + ":" + s, sidebarText, locationText);
+  drawLayout(h + ":" + m + ":" + s, dateText, locationText);
 }
 
-function drawLayout(time, sidebarText, topText) {
+function drawLayout(time, dateDayText, cityCountryText) {
   let zoneW = width / 4;
   let dividerLerp = map(sin(frameCount * 0.008), -1, 1, 0, 0.3);
   let dividerCol = lerpColor(color('#FFFFFF'), color('#4e5859'), dividerLerp);
@@ -95,17 +128,17 @@ function drawLayout(time, sidebarText, topText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // TOP-RIGHT LOCATION: Vertical rotation (90 deg down)
+    // TOP-RIGHT LOCATION: Reading UPWARDS
     push();
     textFont(sidebarFont);
     fill('#BBB6C3');
     noStroke();
-    // Positioned at the top-right of the zone
-    translate(startX + zoneW - 70, 40); 
-    rotate(HALF_PI); // 90 degrees clockwise
+    // Anchor at y=250 to read up towards the top-right corner
+    translate(startX + zoneW - 70, 250); 
+    rotate(-HALF_PI); 
     textAlign(LEFT, CENTER);
     textSize(20);
-    text(topText, 0, 0);
+    text(cityCountryText, 0, 0);
     pop();
 
     // FOOTER: Time display
@@ -116,18 +149,18 @@ function drawLayout(time, sidebarText, topText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // SIDEBAR: Date and Day only
+    // BOTTOM-RIGHT DATE: Reading UPWARDS
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
     translate(startX + zoneW - 70, height - 25);
-    rotate(-HALF_PI); // 90 degrees counter-clockwise
+    rotate(-HALF_PI); 
     textAlign(LEFT, CENTER);
     textSize(20); 
-    text(sidebarText, 0, 0);
+    text(dateDayText, 0, 0);
     pop();
 
-    // INTERNAL DIVIDERS
+    // INTERNAL DIVIDERS ONLY (Removed right-most border)
     if (i < 3) {
       stroke(dividerCol);
       strokeWeight(2.0); 
