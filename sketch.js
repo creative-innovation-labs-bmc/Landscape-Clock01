@@ -35,8 +35,9 @@ function fetchLocation() {
 
 function handleLocation(data) {
   if (data && data.city) {
-    city = data.city.toUpperCase();
-    country = data.country_name.toUpperCase();
+    // Shorten City and Country names if they are too long (e.g., max 10 chars)
+    city = data.city.toUpperCase().substring(0, 10);
+    country = data.country_name.toUpperCase().substring(0, 10);
     locationFetched = true;
   }
 }
@@ -49,8 +50,13 @@ function draw() {
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
-  let dateStr = day() + " " + ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"][month() - 1] + " " + year();
-  let dayStr = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"][new Date().getDay()];
+  // Shortened Month and Day arrays
+  let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
+  
+  let dateStr = day() + " " + months[month() - 1] + " " + year();
+  let dayStr = days[new Date().getDay()];
+  
   let sidebarText = (locationFetched ? city + ", " + country + " — " : "") + dateStr + " — " + dayStr;
 
   if (second() !== lastSecond) {
@@ -90,7 +96,6 @@ function drawLayout(time, sidebarText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // FOOTER: Time display
     textFont(footerFont);
     fill(255); 
     noStroke();
@@ -98,7 +103,6 @@ function drawLayout(time, sidebarText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // SIDEBAR: Rotated location/date info
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
@@ -109,8 +113,6 @@ function drawLayout(time, sidebarText) {
     text(sidebarText, 0, 0);
     pop();
 
-    // --- THE FIX: REMOVED LAST DIVIDER ---
-    // Only draws the line if it is NOT the last zone
     if (i < 3) {
       stroke(dividerCol);
       strokeWeight(2.0); 
@@ -179,13 +181,8 @@ class Particle {
     if (this.isTargeted) {
       this.applyForce(this.arrive(this.target));
     } else {
-      // MEDITATIVE HEARTBEAT CONTROL:
-      // Change 0.008 to 0.004 to slow down the heartbeat further.
       let breathPhase = frameCount * 0.008 + (this.zoneIndex * PI/2);
-      
-      // Change 0.08 to 0.03 to make the scatter/movement subtler.
       let breathingStrength = map(sin(breathPhase), -1, 1, 0.01, 0.08);
-      
       let n = noise(this.pos.x * 0.003, this.pos.y * 0.003, frameCount * 0.005);
       this.applyForce(p5.Vector.fromAngle(TWO_PI * n).mult(0.1));
       let zoneCenter = createVector(cX, cY);
