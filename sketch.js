@@ -35,8 +35,9 @@ function fetchLocation() {
 
 function handleLocation(data) {
   if (data && data.city) {
-    city = data.city.toUpperCase().substring(0, 12);
-    country = data.country_name.toUpperCase().substring(0, 12);
+    // Shorten City and Country names if they are too long (e.g., max 10 chars)
+    city = data.city.toUpperCase().substring(0, 10);
+    country = data.country_name.toUpperCase().substring(0, 10);
     locationFetched = true;
   }
 }
@@ -49,14 +50,14 @@ function draw() {
   let s = nf(second(), 2);
   let digits = [h[0], h[1], m[0], m[1]];
   
+  // Shortened Month and Day arrays
   let months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
   let dateStr = day() + " " + months[month() - 1] + " " + year();
   let dayStr = days[new Date().getDay()];
   
-  let dateText = dateStr + " — " + dayStr;
-  let locationText = (locationFetched ? city + ", " + country : "");
+  let sidebarText = (locationFetched ? city + ", " + country + " — " : "") + dateStr + " — " + dayStr;
 
   if (second() !== lastSecond) {
     applyVibration(18); 
@@ -84,10 +85,10 @@ function draw() {
     }
   }
 
-  drawLayout(h + ":" + m + ":" + s, dateText, locationText);
+  drawLayout(h + ":" + m + ":" + s, sidebarText);
 }
 
-function drawLayout(time, sidebarText, topText) {
+function drawLayout(time, sidebarText) {
   let zoneW = width / 4;
   let dividerLerp = map(sin(frameCount * 0.008), -1, 1, 0, 0.3);
   let dividerCol = lerpColor(color('#FFFFFF'), color('#4e5859'), dividerLerp);
@@ -95,21 +96,6 @@ function drawLayout(time, sidebarText, topText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // --- UPDATED TOP-RIGHT LOCATION ALIGNMENT ---
-    push();
-    textFont(sidebarFont);
-    fill('#BBB6C3');
-    noStroke();
-    // Anchor point fixed at y=60 from the top.
-    translate(startX + zoneW - 70, 60); 
-    rotate(-HALF_PI); // Rotate to read upwards
-    // RIGHT alignment pins the end of the text (the visual top) to y=60
-    textAlign(RIGHT, CENTER); 
-    textSize(20);
-    text(topText, 0, 0);
-    pop();
-
-    // FOOTER: Time display
     textFont(footerFont);
     fill(255); 
     noStroke();
@@ -117,7 +103,6 @@ function drawLayout(time, sidebarText, topText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // SIDEBAR: Date and Day only (Bottom pillar)
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
