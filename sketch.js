@@ -55,9 +55,7 @@ function draw() {
   let dateStr = day() + " " + months[month() - 1] + " " + year();
   let dayStr = days[new Date().getDay()];
   
-  // New Sidebar: Date and Day only
-  let dateText = dateStr + " — " + dayStr;
-  // New Top Text: Location only
+  let sidebarText = dateStr + " — " + dayStr;
   let locationText = (locationFetched ? city + ", " + country : "");
 
   if (second() !== lastSecond) {
@@ -86,7 +84,7 @@ function draw() {
     }
   }
 
-  drawLayout(h + ":" + m + ":" + s, dateText, locationText);
+  drawLayout(h + ":" + m + ":" + s, sidebarText, locationText);
 }
 
 function drawLayout(time, sidebarText, topText) {
@@ -97,13 +95,18 @@ function drawLayout(time, sidebarText, topText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // TOP LOCATION DISPLAY (The red line area)
+    // TOP-RIGHT LOCATION: Vertical rotation (90 deg down)
+    push();
     textFont(sidebarFont);
     fill('#BBB6C3');
     noStroke();
-    textAlign(LEFT, TOP);
+    // Positioned at the top-right of the zone
+    translate(startX + zoneW - 70, 40); 
+    rotate(HALF_PI); // 90 degrees clockwise
+    textAlign(LEFT, CENTER);
     textSize(20);
-    text(topText, startX + 60, 40);
+    text(topText, 0, 0);
+    pop();
 
     // FOOTER: Time display
     textFont(footerFont);
@@ -118,12 +121,13 @@ function drawLayout(time, sidebarText, topText) {
     textFont(sidebarFont);
     fill('#BBB6C3'); 
     translate(startX + zoneW - 70, height - 25);
-    rotate(-HALF_PI); 
+    rotate(-HALF_PI); // 90 degrees counter-clockwise
     textAlign(LEFT, CENTER);
     textSize(20); 
     text(sidebarText, 0, 0);
     pop();
 
+    // INTERNAL DIVIDERS
     if (i < 3) {
       stroke(dividerCol);
       strokeWeight(2.0); 
