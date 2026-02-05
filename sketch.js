@@ -7,7 +7,7 @@ let locationFetched = false;
 const PARTICLES_PER_ZONE = 800; 
 
 function preload() {
-  // Force Start Timer: Ensures the clock runs even if fonts hang
+  // Signage Fallback: If fonts take > 3s, force start the engine
   setTimeout(() => { if (!fontsLoaded) fontError("Timeout"); }, 3000);
 
   mainFont = loadFont('MP-B.ttf', () => { checkFonts(); }, fontError);  
@@ -43,18 +43,22 @@ function setup() {
   lastMinute = minute();
 }
 
+// --- MORE ROBUST FETCH LOGIC ---
 function fetchLocation() {
   if (locationFetched) return;
-  loadJSON('https://ipapi.co/json/', handleLocation, (err) => {
-    setTimeout(fetchLocation, 30000);
+  // Switched to freeipapi.com which has better CORS/Signage support
+  loadJSON('https://freeipapi.com/api/json/', handleLocation, (err) => {
+    console.log("Location fetch blocked. Retrying...");
+    setTimeout(fetchLocation, 10000); // Fast retry for signage bootup
   });
 }
 
 function handleLocation(data) {
-  if (data && data.city) {
-    city = data.city.toUpperCase().substring(0, 10);
-    country = data.country_name.toUpperCase().substring(0, 10);
+  if (data && data.cityName) {
+    city = data.cityName.toUpperCase().substring(0, 12);
+    country = data.countryName.toUpperCase().substring(0, 10);
     locationFetched = true;
+    console.log("Location Synced: " + city);
   }
 }
 
@@ -79,7 +83,9 @@ function draw() {
   let days = ["SUN", "MON", "TUES", "WED", "THURS", "FRI", "SAT"];
   
   let dateText = day() + " " + months[month() - 1] + " " + year() + " — " + days[new Date().getDay()];
-  let locationText = (locationFetched ? city + ", " + country : "");
+  
+  // Debug mode: If fetch fails, show a placeholder for testing
+  let locationText = locationFetched ? (city + ", " + country) : "LOCATING...";
 
   if (second() !== lastSecond) {
     applyVibration(18); 
@@ -118,13 +124,12 @@ function drawLayout(time, dateDayText, cityCountryText) {
   for (let i = 0; i < 4; i++) {
     let startX = i * zoneW;
     
-    // --- TOP-RIGHT LOCATION: RIGHT-ALIGNED STARTING FROM TOP ---
+    // TOP-RIGHT LOCATION: PILLAR ALIGNED
     push();
     textFont(sidebarFont);
     fill('#BBB6C3');
     noStroke();
-    // Anchor pinned at y=50. rotate(-HALF_PI) makes the text read upwards.
-    // textAlign(RIGHT) ensures the visual TOP of the text is fixed at y=50
+    // Anchor at y=50. Right aligned so it "finishes" at the same top point.
     translate(startX + zoneW - 70, 50); 
     rotate(-HALF_PI); 
     textAlign(RIGHT, CENTER);
@@ -140,7 +145,7 @@ function drawLayout(time, dateDayText, cityCountryText) {
     textSize(60); 
     text(time, startX + 60, height - 20);
 
-    // BOTTOM-RIGHT DATE: Standard upward reading
+    // BOTTOM-RIGHT DATE: Pillar Aligned
     push();
     textFont(sidebarFont);
     fill('#BBB6C3'); 
